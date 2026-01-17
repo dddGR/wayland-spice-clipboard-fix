@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-export WAYLAND_DISPLAY="wayland-0"
+# export WAYLAND_DISPLAY="wayland-0" # causing error when wrong id
 
 # Detect X11 Display where spice-vdagent is connected to
 if [ -n "$DISPLAY" ]; then
@@ -14,7 +14,7 @@ else
             break
         fi
     done
-    
+
     # Fallback to socket detection if xset failed
     if [ -z "$X11_DISPLAY" ]; then
         if [ -S "/tmp/.X11-unix/X1" ]; then
@@ -48,13 +48,21 @@ fi
 last_clipboard=""
 
 while true; do
-    current_clipboard=$(wl-paste --no-newline 2>/dev/null || true)
-    
-    if [ "$current_clipboard" != "$last_clipboard" ] && [ -n "$current_clipboard" ]; then
-        echo -n "$current_clipboard" | xclip -selection clipboard -i 2>/dev/null
-        echo "Synced: $(echo -n "$current_clipboard" | wc -c) chars"
-        last_clipboard="$current_clipboard"
+    cboard_host=$(xclip -selection clipboard -o 2>/dev/null || true)
+    cboard_guest=$(wl-paste --no-newline 2>/dev/null || true)
+
+    # evaluation host -> guest
+    if [ "$cboard_host" != "$last_clipboard" ] && [ -n "$cboard_host" ]; then
+        msg="Synced in: $(echo -n "$cboard_host" | wc -c) chars"
+        echo -n "$cboard_host" | wl-copy && echo $msg
+        last_clipboard="$cboard_host"
+
+    # evaluation guest -> host
+    elif [ "$cboard_guest" != "$last_clipboard" ] && [ -n "$cboard_guest" ]; then
+        msg="Synced out: $(echo -n "$cboard_guest" | wc -c) chars"
+        echo -n "$cboard_guest" | xclip -selection clipboard -i && echo $msg
+        last_clipboard="$cboard_guest"
     fi
-    
-    sleep 1
+
+    sleep 2
 done

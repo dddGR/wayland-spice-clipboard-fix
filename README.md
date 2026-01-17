@@ -7,6 +7,7 @@ Tested on Fedora 42 with KDE Plasma 6.
 ## Problem
 
 spice-vdagent has poor Wayland compatibility:
+
 - Host to guest clipboard: works
 - Guest to host clipboard: broken
 - Errors: "could not connect to X-server" or mutter DBUS failures
@@ -20,7 +21,7 @@ Pipeline: Wayland clipboard → Bridge → X11 clipboard → spice-vdagent → H
 ## Installation
 
 ```bash
-git clone https://github.com/chrisbelson/wayland-spice-clipboard-fix.git
+git clone https://github.com/dddGR/wayland-spice-clipboard-fix.git
 cd wayland-spice-clipboard-fix
 ./install.sh
 ```
@@ -66,6 +67,7 @@ See docs/README.md for common issues and solutions.
 ## Compatibility
 
 Tested on:
+
 - Fedora 42 + KDE Plasma 6 + Wayland
 - SPICE/QXL virtualization
 - QEMU/KVM

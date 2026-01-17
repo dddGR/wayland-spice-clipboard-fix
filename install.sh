@@ -47,3 +47,12 @@ sudo systemctl start spice-vdagentd
 echo -e "\nInstallation complete!"
 echo "Check status: systemctl --user status wayland-spice-clipboard.service"
 echo "Monitor logs: journalctl --user -u wayland-spice-clipboard.service -f"
+
+echo -e "\nRecommend rebooting the system"
+read -p "Do you want to restart? (Y/n) " -n 1 -r
+
+if [[ $REPLY =~ ^[Nn]$ ]]; then
+    exit 0
+fi
+
+sudo reboot now

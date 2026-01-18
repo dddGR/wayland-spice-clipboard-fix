@@ -1,7 +1,23 @@
 #!/bin/bash
 
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-# export WAYLAND_DISPLAY="wayland-0" # causing error when wrong id
+
+# Try to get wayland display socket, depend on the system
+# sometime, when first boot up, wayland-x cannot found
+# Reason: unknown
+while true; do
+    wayland_x=$(ls "$XDG_RUNTIME_DIR" | grep -o "wayland-[0-9][0-9]*" | head -n 1)
+
+    if [[ -z "$wayland_x" ]]; then
+        echo "'wayland-x' not found...try again"
+        sleep 2
+    else
+        break
+    fi
+done
+
+export WAYLAND_DISPLAY="$wayland_x"
+
 
 # Detect X11 Display where spice-vdagent is connected to
 if [ -n "$DISPLAY" ]; then
@@ -30,26 +46,46 @@ fi
 export DISPLAY="$X11_DISPLAY"
 
 echo "Starting clipboard bridge"
-echo "Using display: $DISPLAY"
+echo "Using display: [$DISPLAY]"
 
-# Verify that we can connect and clipboard works
-if ! xclip -version >/dev/null 2>&1; then
-    echo "Warning: Cannot connect to X11 display $DISPLAY"
+switch_display() {
     # Try to find a working display
     for test_display in :0 :1 :2 :10; do
         if DISPLAY=$test_display xclip -version >/dev/null 2>&1; then
             export DISPLAY="$test_display"
-            echo "Switched to display: $DISPLAY"
+            # echo "Switched to display: [$DISPLAY]"
             break
         fi
     done
+}
+
+# Verify that we can connect and clipboard works
+if ! xclip -version >/dev/null 2>&1; then
+    echo "Warning: Cannot connect to X11 display $DISPLAY"
+    switch_display
 fi
+
+try_get() {
+    output=$("$@" 2>&1)
+
+    if [[ $? -ne 0 ]]; then
+        # Ignore two error code when clipboard is empty
+        if [[ ${output,,} != *"target string not available"* && ${output,,} != *"nothing is copied"* ]]; then
+            # Try to switch to another display if current one cannot connect
+            switch_display
+        fi
+
+        echo -n ""
+    else
+        echo -n "$output"
+    fi
+}
 
 last_clipboard=""
 
 while true; do
-    cboard_host=$(xclip -selection clipboard -o 2>/dev/null || true)
-    cboard_guest=$(wl-paste --no-newline 2>/dev/null || true)
+    cboard_host=$(try_get xclip -selection clipboard -o)
+    cboard_guest=$(try_get wl-paste --no-newline)
 
     # evaluation host -> guest
     if [ "$cboard_host" != "$last_clipboard" ] && [ -n "$cboard_host" ]; then
